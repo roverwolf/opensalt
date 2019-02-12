@@ -20,7 +20,8 @@ use App\Form\Command\CopyToLsDocCommand;
 use App\Form\Type\LsDocListType;
 use App\Form\Type\LsItemParentType;
 use App\Form\Type\LsItemType;
-use App\Entity\User\User;
+use App\Service\BucketService;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
@@ -29,6 +30,7 @@ use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
@@ -41,15 +43,20 @@ class LsItemController extends AbstractController
 {
     use CommandDispatcherTrait;
 
+    private $bucketProvider;
+
+    public function __construct(?string $bucketProvider)
+    {
+        $this->bucketProvider = $bucketProvider;
+    }
+
     /**
      * Lists all LsItem entities.
      *
      * @Route("/", methods={"GET"}, name="lsitem_index")
      * @Template()
-     *
-     * @return array
      */
-    public function indexAction()
+    public function indexAction(): array
     {
         $em = $this->getDoctrine()->getManager();
 
@@ -68,14 +75,9 @@ class LsItemController extends AbstractController
      * @Template()
      * @Security("is_granted('add-standard-to', doc)")
      *
-     * @param Request $request
-     * @param LsDoc $doc
-     * @param LsItem|null $parent
-     * @param LsDefAssociationGrouping|null $assocGroup
-     *
      * @return array|\Symfony\Component\HttpFoundation\RedirectResponse|Response
      */
-    public function newAction(Request $request, LsDoc $doc, LsItem $parent = null, LsDefAssociationGrouping $assocGroup = null)
+    public function newAction(Request $request, LsDoc $doc, ?LsItem $parent = null, ?LsDefAssociationGrouping $assocGroup = null)
     {
         $ajax = $request->isXmlHttpRequest();
 
@@ -93,6 +95,7 @@ class LsItemController extends AbstractController
                 $this->sendCommand($command);
 
                 // retrieve isChildOf assoc id for the new item
+                /** @var LsAssociation $assoc */
                 $assoc = $this->getDoctrine()->getRepository(LsAssociation::class)->findOneBy(['originLsItem' => $lsItem]);
 
                 if ($ajax) {
@@ -100,7 +103,7 @@ class LsItemController extends AbstractController
                     return $this->generateItemJsonResponse($lsItem, $assoc);
                 }
 
-                return $this->redirectToRoute('lsitem_show', array('id' => $lsItem->getId()));
+                return $this->redirectToRoute('lsitem_show', ['id' => $lsItem->getId()]);
             } catch (\Exception $e) {
                 $form->addError(new FormError('Error adding new item: '.$e->getMessage()));
             }
@@ -150,10 +153,6 @@ class LsItemController extends AbstractController
      * @Route("/{id}/edit", methods={"GET", "POST"}, name="lsitem_edit")
      * @Template()
      * @Security("is_granted('edit', lsItem)")
-     *
-     * @param Request $request
-     * @param LsItem $lsItem
-     * @param User $user
      *
      * @return array|\Symfony\Component\HttpFoundation\RedirectResponse|Response
      */
@@ -209,13 +208,8 @@ class LsItemController extends AbstractController
      *
      * @Route("/{id}", methods={"DELETE"}, name="lsitem_delete")
      * @Security("is_granted('edit', lsItem)")
-     *
-     * @param Request $request
-     * @param LsItem $lsItem
-     *
-     * @return \Symfony\Component\HttpFoundation\RedirectResponse
      */
-    public function deleteAction(Request $request, LsItem $lsItem)
+    public function deleteAction(Request $request, LsItem $lsItem): RedirectResponse
     {
         $form = $this->createDeleteForm($lsItem);
         $form->handleRequest($request);
@@ -232,15 +226,11 @@ class LsItemController extends AbstractController
 
     /**
      * Creates a form to delete a LsItem entity.
-     *
-     * @param LsItem $lsItem The LsItem entity
-     *
-     * @return FormInterface The form
      */
     private function createDeleteForm(LsItem $lsItem): FormInterface
     {
         return $this->createFormBuilder()
-            ->setAction($this->generateUrl('lsitem_delete', array('id' => $lsItem->getId())))
+            ->setAction($this->generateUrl('lsitem_delete', ['id' => $lsItem->getId()]))
             ->setMethod('DELETE')
             ->getForm()
         ;
@@ -251,12 +241,8 @@ class LsItemController extends AbstractController
      *
      * @Route("/{id}/export", methods={"GET"}, defaults={"_format"="json"}, name="lsitem_export")
      * @Template()
-     *
-     * @param LsItem $lsItem
-     *
-     * @return array
      */
-    public function exportAction(LsItem $lsItem)
+    public function exportAction(LsItem $lsItem): array
     {
         return [
             'lsItem' => $lsItem,
@@ -264,18 +250,13 @@ class LsItemController extends AbstractController
     }
 
     /**
-     * Remove a child LSItem
+     * Remove a child LSItem.
      *
      * @Route("/{id}/removeChild/{child}", methods={"POST"}, name="lsitem_remove_child")
      * @Security("is_granted('edit', lsItem)")
      * @Template()
-     *
-     * @param \App\Entity\Framework\LsItem $parent
-     * @param \App\Entity\Framework\LsItem $child
-     *
-     * @return array
      */
-    public function removeChildAction(LsItem $parent, LsItem $child)
+    public function removeChildAction(LsItem $parent, LsItem $child): array
     {
         $command = new RemoveChildCommand($parent, $child);
         $this->sendCommand($command);
@@ -284,14 +265,11 @@ class LsItemController extends AbstractController
     }
 
     /**
-     * Copy an LsItem to a new LsDoc
+     * Copy an LsItem to a new LsDoc.
      *
      * @Route("/{id}/copy", methods={"GET", "POST"}, name="lsitem_copy_item")
      * @Security("is_granted('edit', lsItem)")
      * @Template()
-     *
-     * @param Request $request
-     * @param LsItem $lsItem
      *
      * @return array|\Symfony\Component\HttpFoundation\RedirectResponse|Response
      */
@@ -322,7 +300,7 @@ class LsItemController extends AbstractController
                 );
             }
 
-            return $this->redirectToRoute('lsitem_show', array('id' => $lsItem->getId()));
+            return $this->redirectToRoute('lsitem_show', ['id' => $lsItem->getId()]);
         }
 
         $ret = [
@@ -342,9 +320,6 @@ class LsItemController extends AbstractController
      * @Route("/{id}/parent", methods={"GET", "POST"}, name="lsitem_change_parent")
      * @Security("is_granted('edit', lsItem)")
      * @Template()
-     *
-     * @param Request $request
-     * @param LsItem $lsItem
      *
      * @return array|\Symfony\Component\HttpFoundation\RedirectResponse|Response
      */
@@ -382,11 +357,33 @@ class LsItemController extends AbstractController
         return $ret;
     }
 
+    /**
+     * Upload attachment to LsItem entity.
+     *
+     * @Route("/{id}/upload_attachment", methods={"POST"}, name="lsitem_upload_attachment")
+     * @Template()
+     * @Security("is_granted('add-standard-to', doc)")
+     */
+    public function uploadAttachmentAction(Request $request, LsDoc $doc, BucketService $bucket): Response
+    {
+        if (!empty($this->bucketProvider)) {
+            $file = $request->files->get('file');
+
+            if (null !== $file && $file->isValid()) {
+                $fileUrl = $bucket->uploadFile($file, 'items');
+                return new JsonResponse(['filename' => $fileUrl]);
+            }
+        }
+
+        return new Response(null, Response::HTTP_BAD_REQUEST);
+    }
+
     private function generateItemJsonResponse(LsItem $item, ?LsAssociation $assoc = null): Response
     {
         $ret = [
             'id' => $item->getId(),
             'identifier' => $item->getIdentifier(),
+            'uri' => $item->getUri(),
             'fullStatement' => $item->getFullStatement(),
             'humanCodingScheme' => $item->getHumanCodingScheme(),
             'listEnumInSource' => $item->getListEnumInSource(),
@@ -398,14 +395,15 @@ class LsItemController extends AbstractController
             'educationalAlignment' => $item->getEducationalAlignment(),
             'itemType' => $item->getItemType(),
             'changedAt' => $item->getChangedAt(),
-            'extra' => [],
+            'extra' => $item->getExtra(),
+            'assocData' => [],
         ];
 
         if (null !== $assoc) {
             $destItem = $assoc->getDestinationNodeIdentifier();
 
             if (null !== $destItem) {
-                $ret['extra'] = [
+                $ret['assocData'] = [
                     'assocDoc' => $assoc->getLsDocIdentifier(),
                     'assocId' => $assoc->getId(),
                     'identifier' => $assoc->getIdentifier(),
@@ -413,10 +411,10 @@ class LsItemController extends AbstractController
                     'dest' => ['doc' => $assoc->getLsDocIdentifier(), 'item' => $destItem, 'uri' => $destItem],
                 ];
                 if ($assoc->getGroup()) {
-                    $ret['extra']['groupId'] = $assoc->getGroup()->getId();
+                    $ret['assocData']['groupId'] = $assoc->getGroup()->getId();
                 }
                 if ($assoc->getSequenceNumber()) {
-                    $ret['extra']['seq'] = $assoc->getSequenceNumber();
+                    $ret['assocData']['seq'] = $assoc->getSequenceNumber();
                 }
             }
         }

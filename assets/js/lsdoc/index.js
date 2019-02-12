@@ -347,8 +347,6 @@ var SaltLocal = (function () {
 
         if (window.File && window.FileReader && window.FileList && window.Blob) {
             for (var i = 0; f = files[i]; i++) {
-                console.log('name:', escape(f.name), '- type:', f.type || 'n/a', '- size:', f.size,
-                        'bytes', '- lastModified:', f.lastModified ? f.lastModifiedDate.toLocaleDateString() : 'n/a');
 
                 var reader = new FileReader();
                 if (isTypeValid(f.name)) {
@@ -412,7 +410,7 @@ var SaltLocal = (function () {
                     },
                     error: function () {
                         $('.tab-content').removeClass('hidden');
-                        $('.case-error-msg').html('Error while importing the file');
+                        $('.case-error-msg').html("We're sorry, we cannot load this document. Please ensure this document is not already on the server, or see the Spreadsheet loading guide at docs.opensalt.org");
                         $('.case-error-msg').removeClass('hidden');
                         $('.file-loading').addClass('hidden');
                     }

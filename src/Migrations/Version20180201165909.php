@@ -4,13 +4,13 @@ declare(strict_types = 1);
 
 namespace DoctrineMigrations;
 
-use Doctrine\DBAL\Migrations\AbstractMigration;
+use Doctrine\Migrations\AbstractMigration;
 use Doctrine\DBAL\Schema\Schema;
 use Ramsey\Uuid\Uuid;
 
 class Version20180201165909 extends AbstractMigration
 {
-    public function up(Schema $schema)
+    public function up(Schema $schema): void
     {
         $sql = <<<'xENDx'
 INSERT IGNORE INTO ls_def_licence
@@ -40,7 +40,7 @@ xENDx;
         $this->addSql('SELECT "Added licence"');
     }
 
-    public function down(Schema $schema)
+    public function down(Schema $schema): void
     {
         $this->addSql('DELETE IGNORE FROM ls_def_licence WHERE title = "Attribution 4.0 International" AND licence_text = "https://creativecommons.org/licenses/by/4.0/legalcode"');
     }

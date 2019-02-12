@@ -16,7 +16,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  * @Serializer\ExclusionPolicy("all")
  * @Serializer\VirtualProperty(
  *     "uri",
- *     exp="service('App\\Service\\Api1Uris').getApiUrl(object)",
+ *     exp="service('App\\Service\\Api1Uris').getUri(object)",
  *     options={
  *         @Serializer\SerializedName("uri"),
  *         @Serializer\Expose()
@@ -218,6 +218,10 @@ class AbstractLsBase implements IdentifiableInterface
      */
     public function getExtra(): array
     {
+        if (null === $this->extra) {
+            return [];
+        }
+
         return $this->extra;
     }
 
@@ -251,7 +255,11 @@ class AbstractLsBase implements IdentifiableInterface
      */
     public function setExtraProperty(string $property, $value)
     {
-        $this->extra[$property] = $value;
+        if (null === $value) {
+            unset($this->extra[$property]);
+        } else {
+            $this->extra[$property] = $value;
+        }
 
         return $this;
     }

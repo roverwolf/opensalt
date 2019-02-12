@@ -23,8 +23,10 @@ parameters:
     env(GITHUB_CLIENT_ID): null
     env(GITHUB_CLIENT_SECRET): null
     env(COMMENTS_FEATURE): inactive
+    env(COMMENT_ATTACHMENTS): inactive
     env(CREATE_ACCOUNT_FEATURE): inactive
     env(USE_MAIL_FEATURE): inactive
+    env(VISUALIZATION_FEATURE): inactive
     env(MAIL_FEATURE_FROM_EMAIL): null
     env(BRAND_LOGO_URL): null
     env(BRAND_LOGO_STYLE): null
@@ -41,6 +43,15 @@ parameters:
     env(GOOGLE_CAPTCHA_SITE_KEY): null
     env(GOOGLE_CAPTCHA_SECRET_KEY): null
     env(SESSION_MAX_IDLE_TIME): 3600
+    env(AWS_ACCESS_KEY_ID): null
+    env(AWS_SECRET_ACCESS_KEY): null
+    env(AWS_S3_PREFIX): null
+    env(AWS_S3_REGION): null
+    env(AWS_S3_BUCKET): null
+    env(ATTACHMENT_URL_PREFIX): null
+    env(BUCKET_PROVIDER): null
+    env(LOCAL_FILESYSTEM_PATH): null
+    env(FOOTER_LEFT_TEXT): null
 
     locale: en
     database_host: '%env(MYSQL_HOST)%'
@@ -64,6 +75,7 @@ parameters:
     brand_link_url: '%env(BRAND_LINK_URL)%'
     brand_link_style: '%env(BRAND_LINK_STYLE)%'
     comments_feature: '%env(COMMENTS_FEATURE)%'
+    comment_attachments: '%env(COMMENT_ATTACHMENTS)%'
     firebase_api_key: '%env(FIREBASE_API_KEY)%'
     firebase_db_url: '%env(FIREBASE_DB_URL)%'
     firebase_auth_domain: '%env(FIREBASE_AUTH_DOMAIN)%'
@@ -75,10 +87,22 @@ parameters:
     create_account_feature: '%env(CREATE_ACCOUNT_FEATURE)%'
     use_mail_feature: '%env(USE_MAIL_FEATURE)%'
     mail_feature_from_email: '%env(MAIL_FEATURE_FROM_EMAIL)%'
+    visualization_feature: '%env(VISUALIZATION_FEATURE)%'
     google_captcha_site_key: '%env(GOOGLE_CAPTCHA_SITE_KEY)%'
     google_captcha_secret_key: '%env(GOOGLE_CAPTCHA_SECRET_KEY)%'
     session_max_idle_time: '%env(int:SESSION_MAX_IDLE_TIME)%'
-
+    aws_key: '%env(AWS_ACCESS_KEY_ID)%'
+    aws_secret: '%env(AWS_SECRET_ACCESS_KEY)%'
+    aws_prefix: '%env(AWS_S3_PREFIX)%'
+    aws_region: '%env(AWS_S3_REGION)%'
+    aws_bucket: '%env(AWS_S3_BUCKET)%'
+    attachment_url_prefix: '%env(ATTACHMENT_URL_PREFIX)%'
+    bucket_provider: '%env(BUCKET_PROVIDER)%'
+    local_filesystem_path: '%env(LOCAL_FILESYSTEM_PATH)%'
+    footer_left_text: '%env(FOOTER_LEFT_TEXT)%'
+    base_template: 'base.html.twig'
+    assets_version: '190202'
+    
 services:
     # default configuration for services in *this* file
     _defaults:
@@ -88,12 +112,13 @@ services:
                             # fetching services directly from the container via $container->get() won't work.
                             # The best practice is to be explicit about your dependencies anyway.
         bind:
-            $rootDir: '%kernel.root_dir%'
+            $projectDir: '%kernel.project_dir%'
             $mailFromEmail: '%mail_feature_from_email%'
             $firebasePrefix: '%firebase_prefix%'
             $guzzleJsonClient: '@csa_guzzle.client.json'
             $kernelEnv: '%kernel.environment%'
             $externalDocCache: '@salt.cache.external_docs'
+            $assetsVersion: '%assets_version%'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -121,8 +146,12 @@ services:
         arguments:
             $sessionMaxIdleTime: '%session_max_idle_time%'
 
-    App\EventListener\LoginListener:
-        class: App\EventListener\LoginListener
+    App\Controller\Framework\LsItemController:
+        arguments:
+            $bucketProvider: '%bucket_provider%'
+
+    App\EventListener\LoginCaptchaListener:
+        class: App\EventListener\LoginCaptchaListener
         arguments:
             $captchaSecret: '%google_captcha_secret_key%'
 
@@ -135,15 +164,28 @@ services:
     App\Service\Api1Uris:
         public: true
 
+    App\Service\Api1RouteMap:
+        public: true
+
     # Allow Codeception to get some defined services for testing
     App\Service\CodeceptionBridge:
         public: true
+
+    App\Service\BucketService:
+        arguments:
+            $attachmentUrlPrefix: '%attachment_url_prefix%'
+            $bucketPrefix: '%aws_prefix%'
 
     # Workarounds for 3.4 deprecations
     Symfony\Bundle\SwiftmailerBundle\Command\:
         resource: '../vendor/symfony/swiftmailer-bundle/Command'
         tags: ['console.command']
 
+    League\Flysystem\Filesystem:
+        class: 'League\Flysystem\Filesystem'
+
+    League\Flysystem\AdapterInterface:
+        factory: 'App\Service\BucketFactory:filesystem'
 
     # Aliased services
     Qandidate\Toggle\ToggleManager: '@qandidate.toggle.manager'

@@ -7,6 +7,7 @@ use App\Command\Framework\AddSubjectCommand;
 use App\Command\Framework\DeleteSubjectCommand;
 use App\Command\Framework\UpdateSubjectCommand;
 use App\Form\Type\LsDefSubjectType;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
@@ -58,11 +59,8 @@ class LsDefSubjectController extends AbstractController
         // ?page_limit=N&q=SEARCHTEXT
         $em = $this->getDoctrine()->getManager();
 
-        $objects = $em->getRepository(LsDefSubject::class)->getList();
-
-//        $want = $request->query->get('q');
-//        if (!array_key_exists($want, $lsDefItemTypes)) {
-//        }
+        $search = $request->query->get('q');
+        $objects = $em->getRepository(LsDefSubject::class)->getList($search);
 
         return [
             'objects' => $objects,
@@ -74,6 +72,7 @@ class LsDefSubjectController extends AbstractController
      *
      * @Route("/new", methods={"GET", "POST"}, name="lsdef_subject_new")
      * @Template()
+     * @Security("is_granted('create', 'lsdoc')")
      *
      * @param Request $request
      *
@@ -127,6 +126,7 @@ class LsDefSubjectController extends AbstractController
      *
      * @Route("/{id}/edit", methods={"GET", "POST"}, name="lsdef_subject_edit")
      * @Template()
+     * @Security("is_granted('create', 'lsdoc')")
      *
      * @param Request $request
      * @param LsDefSubject $lsDefSubject
@@ -161,6 +161,7 @@ class LsDefSubjectController extends AbstractController
      * Deletes a LsDefSubject entity.
      *
      * @Route("/{id}", methods={"DELETE"}, name="lsdef_subject_delete")
+     * @Security("is_granted('create', 'lsdoc')")
      *
      * @param Request $request
      * @param LsDefSubject $lsDefSubject

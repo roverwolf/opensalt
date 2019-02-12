@@ -62,8 +62,9 @@ class Item implements Context
      * @Given /^I add an item$/
      * @Given /^I add a another Item$/
      * @Given /^I add another Item$/
+     * @Then /^I add "([^"]*)" item with custom field "([^"]*)" and value "([^"]*)"$/
      */
-    public function iAddItem($item = 'Test Item')
+    public function iAddItem($item = 'Test Item', $additionalField = null, $value = null)
     {
         $requestedItem = $item;
 
@@ -110,6 +111,11 @@ class Item implements Context
         $I->fillField('#ls_item_licenceUri', $licUri);
         $I->executeJS("$('#ls_item_notes').nextAll('.CodeMirror')[0].CodeMirror.getDoc().setValue('{$note}')");
 
+        if (!is_null($additionalField) && !empty($additionalField)) {
+            $I->see($additionalField);
+            $I->fillField('#ls_item_additional_fields_'.$additionalField, $value);
+        }
+
         $I->click('Create');
         $I->waitForElementNotVisible('#editItemModal');
 
@@ -130,12 +136,16 @@ class Item implements Context
         $itemId = $I->grabFromCurrentUrl('#/(\d+)$#');
         $I->remember($requestedItem.'-id', $itemId);
 
-        $uri = $I->grabAttributeFrom('li.lsItemDetailsExtras a', 'href');
-        preg_match('#/([a-f0-9-]{32,36})$#', $uri, $matches);
-        $key = $matches[1];
+        $key = $I->grabTextFrom('div.lsItemDetails li.list-group-item .item-identifier');
         $I->remember($requestedItem.'-identifier', $key);
 
         $I->amOnPage($frameworkUrl);
+        try {
+            $I->waitForElementVisible('#modalSpinner', 10);
+        } catch (\Exception $e) {
+            // Ignore if not seen
+        }
+        $I->waitForElementNotVisible('#modalSpinner', 120);
     }
 
     /**
@@ -441,14 +451,21 @@ class Item implements Context
     {
         $I = $this->I;
 
+        $I->waitForJS('return (("undefined" === typeof $) ? 1 : 0) === 0 && $.active === 0 && $("#tree1Section div.treeDiv ul").length > 0;', 10);
         $I->see('Import Children');
-        $I->click('Import Children');
-        $I->waitForElementVisible('#addChildrenModal', 120);
+        try {
+            $I->click('Import Children');
+            $I->waitForElementVisible('#addChildrenModal', 10);
+        } catch (\Exception $e) {
+            $I->click('Import Children');
+            $I->waitForElementVisible('#addChildrenModal', 15);
+        }
         $I->see('Import Items');
         $I->attachFile('input#file-url', 'children.csv');
         $I->click('.btn-import-csv');
-        $I->waitForJS('return (("undefined" === typeof $) ? 1 : $.active) === 0;', 10);
+        $I->waitForJS('return (("undefined" === typeof $) ? 1 : $.active) === 0;', 15);
 
+        $I->waitForElementNotVisible('#addChildrenModal', 120);
         $I->waitForElementNotVisible('#modalSpinner', 120);
         $I->waitForElementVisible('#itemSection h4.itemTitle', 120);
 
@@ -456,6 +473,7 @@ class Item implements Context
         $I->see('A.B abc');
         $I->see('A.B.C def');
         $I->see('A.B.D ghi');
+        $I->see('A.B.C.L jkl');
     }
 
     /**
@@ -491,5 +509,20 @@ class Item implements Context
                 $this->I->wait(1);
             }
         }
+    }
+
+    /**
+     * @Then /^I see the additional field "([^"]*)" in the item "([^"]*)" with value "([^"]*)"$/
+     */
+    public function iSeeTheCustomFieldInTheItem($additionalField, $item, $value)
+    {
+        $I = $this->I;
+
+        $I->see($item);
+        $I->executeJS("$('.fancytree-title').click()");
+        $I->waitForJS('return (("undefined" === typeof $) ? 1 : $.active) === 0;', 30);
+        $I->click('More Info');
+        $I->see($additionalField);
+        $I->see($value);
     }
 }

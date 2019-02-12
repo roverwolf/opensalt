@@ -10,17 +10,13 @@ use Symfony\Component\Validator\Constraints as Assert;
 /**
  * LsAssociation
  *
- * @ORM\Table(name="ls_association")
- * @ORM\Entity(repositoryClass="App\Repository\Framework\LsAssociationRepository")
- *
- * @Serializer\VirtualProperty(
- *     "uri",
- *     exp="service('App\\Service\\Api1Uris').getApiUrl(object)",
- *     options={
- *         @Serializer\SerializedName("uri"),
- *         @Serializer\Expose()
+ * @ORM\Table(name="ls_association",
+ *     indexes={
+ *         @ORM\Index(name="dest_id_idx", columns={"destination_node_identifier"}),
+ *         @ORM\Index(name="orig_id_idx", columns={"origin_node_identifier"}),
  *     }
  * )
+ * @ORM\Entity(repositoryClass="App\Repository\Framework\LsAssociationRepository")
  *
  * @Serializer\VirtualProperty(
  *     "cfDocumentUri",

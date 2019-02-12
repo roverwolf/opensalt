@@ -20,15 +20,6 @@ use Symfony\Component\Validator\Constraints as Assert;
  * @UniqueEntity("uri")
  *
  * @Serializer\VirtualProperty(
- *     "uri",
- *     exp="service('App\\Service\\Api1Uris').getApiUrl(object)",
- *     options={
- *         @Serializer\SerializedName("uri"),
- *         @Serializer\Expose()
- *     }
- * )
- *
- * @Serializer\VirtualProperty(
  *     "cfDocumentUri",
  *     exp="service('App\\Service\\Api1Uris').getLinkUri(object.getLsDoc())",
  *     options={
@@ -93,6 +84,8 @@ use Symfony\Component\Validator\Constraints as Assert;
  */
 class LsItem extends AbstractLsBase implements CaseApiInterface, LockableInterface
 {
+    use AccessAdditionalFieldTrait;
+
     /**
      * @var string
      *
@@ -148,15 +141,6 @@ class LsItem extends AbstractLsBase implements CaseApiInterface, LockableInterfa
      * @Serializer\SerializedName("listEnumeration")
      */
     private $listEnumInSource;
-
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="rank", type="bigint", nullable=true)
-     *
-     * @Serializer\Exclude()
-     */
-    private $rank;
 
     /**
      * @var string
@@ -331,8 +315,6 @@ class LsItem extends AbstractLsBase implements CaseApiInterface, LockableInterfa
      *
      * @ORM\Column(name="changed_at", type="datetime", precision=6)
      * @Gedmo\Timestampable(on="update")
-     *
-     * @Assert\DateTime()
      *
      * @Serializer\Exclude()
      */
@@ -1136,26 +1118,6 @@ class LsItem extends AbstractLsBase implements CaseApiInterface, LockableInterfa
     public function setLsDocIdentifier(?string $lsDocIdentifier): LsItem
     {
         $this->lsDocIdentifier = $lsDocIdentifier;
-
-        return $this;
-    }
-
-    /**
-     * @return int
-     */
-    public function getRank(): ?int
-    {
-        return $this->rank;
-    }
-
-    /**
-     * @param int $rank
-     *
-     * @return LsItem
-     */
-    public function setRank(?int $rank): LsItem
-    {
-        $this->rank = $rank;
 
         return $this;
     }

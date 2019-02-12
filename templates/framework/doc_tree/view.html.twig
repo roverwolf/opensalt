@@ -29,6 +29,9 @@
                         <button id="displayAssocBtn" type="button" class="view-btn btn btn-default btn-xs">Association<br/>View</button>
                         {% if editorRights %}
                             <button id="displayLogBtn" type="button" class="view-btn btn btn-default btn-xs">Log<br/>View</button>
+                            {% if 'visualization_feature' is active feature %}
+                                <button id="displayVisualizationBtn" type="button" class="view-btn btn btn-default btn-xs">Visualization</br>View</button>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -412,12 +415,11 @@
                                         <select id="js-framework-to-copy" class="form-control" name="frameworkToCopy">
                                             {% for framework in lsDocs %}
                                                 {% if framework.creator != lastCreator %}
-                                                    {% if not loop.first %}</ul></li>{% endif %}
                                                     <optgroup label="{{ framework.creator }}">
                                                     {% set lastCreator = framework.creator %}
                                                 {% endif %}
                                                 {% if framework.title != lsDocTitle %}
-                                                    <option value="{{ framework.id }}">{{ framework.title }}</a></li>
+                                                    <option value="{{ framework.id }}">{{ framework.title }}</option>
                                                 {% endif %}
                                                 {% if loop.last == true and framework.creator != '' %}
                                                     </optgroup>
@@ -690,6 +692,12 @@
     {% endblock %}
 
     {% block javascripts %}
+        {% if 'comment_attachments' is active feature %}
+            <script>var COMMENT_ATTACHMENTS = true;</script>
+        {% else %}
+            <script>var COMMENT_ATTACHMENTS = false;</script>
+        {% endif %}
+
         {% if 'comments' is active feature %}
             <script src="{{ asset('build/comments.js', 'encore') }}"></script>
         {% endif %}
@@ -718,6 +726,7 @@
 
             // establish paths
             apx.path = apx.path || {};
+            apx.path.uri = '{{ path('uri_lookup', {'uri': 'ID'}) }}';
             apx.path.doc_index = '{{ path('lsdoc_index') }}';
             apx.path.lsDoc = '{{ path('doc_tree_view', {'slug':'ID'}) }}';
             apx.path.lsItem = '{{ path('doc_tree_item_view', {'id':'ID'}) }}';
@@ -746,6 +755,7 @@
             apx.path.doc_tree_multi_changes = '{{ path('multi_tree_info_json', {'id':'ID'}) }}';
             apx.path.doc_revisions = '{{ path('doc_revisions_json', {'id':'ID'}) }}';
             apx.path.doc_revisions_export = '{{ path('doc_revisions_csv', {'id': 'ID'}) }}';
+            apx.path.doc_copy = '{{ path('copy_framework_content', {'id': 'ID'}) }}';
 
             apx.path.doctree_cfpackage_export = '{{ path('doctree_cfpackage_export', {'id':'ID'}) }}';
             apx.path.doctree_retrieve_document = '{{ path('doctree_retrieve_document', {'id':'ID'}) }}';

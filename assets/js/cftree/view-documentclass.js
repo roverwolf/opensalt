@@ -716,11 +716,19 @@ function ApxDocument(initializer) {
     };
 
     self.getItemUri = function(item) {
-        if (empty(self.doc.uriBase) || empty(item) || empty(item.identifier)) {
+        if(empty(item)) {
             return "?";
-        } else {
+        }
+
+        if(!empty(item.uri)) {
+            return item.uri;
+        }
+
+        if(!empty(self.doc.uriBase) && !empty(item.identifier)) {
             return self.doc.uriBase + item.identifier;
         }
+
+        return "?";
     };
 
     self.getItemTitleBlock = function(item, requireFullStatement) {
@@ -1349,7 +1357,7 @@ function ApxDocument(initializer) {
             let key, attributes, val;
             for (key in attributes = {
                 'officialSourceURL': 'Official URL',
-                'uri': 'CASE Framework URL',
+                'identifier': 'Identifier',
                 'creator': 'Creator',
                 'description': 'Description',
                 'subjects': 'Subject',
@@ -1384,13 +1392,13 @@ function ApxDocument(initializer) {
                         let $val = $('<div>' + val + '</div>');
                         $('a', $val).attr('target', '_blank');
                         val = $val.html();
-                    } else if (key === 'uri') {
-                        val = render.inlineLinked(self.getItemUri(item));
-
-                        // add target=_blank
-                        let $val = $('<div>' + val + '</div>');
-                        $('a', $val).attr('target', '_blank');
-                        val = $val.html();
+                    } else if (key === 'identifier') {
+                        val = $('<div>').append(
+                            $('<a>', {
+                                href: apx.path.uri.replace('ID', val),
+                                text: render.escaped(val)
+                            })
+                        ).html();
                     } else {
                         val = render.escaped(val);
                     }
@@ -1467,6 +1475,7 @@ function ApxDocument(initializer) {
             let key, attributes, val;
             for (key in attributes = {
                 'fstmt': 'Full Statement',
+                'identifier': 'Identifier',
                 'ck': 'Concept Keywords',
                 'el': 'Education Level',
                 'itp': 'Type',
@@ -1480,11 +1489,28 @@ function ApxDocument(initializer) {
                             + render.block(val)
                             + '</li>'
                         ;
+                    } else if (key === 'identifier') {
+                        val = $('<div>').append(
+                            $('<a>', {
+                                href: apx.path.uri.replace('ID', val),
+                                text: render.escaped(val)
+                            })
+                        ).html();
+
+                        html += '<li class="list-group-item">'
+                            + '<strong>' + attributes[key] + ':</strong> '
+                            + '<span class="item-' + key + '">'
+                              + val
+                              + '</span>'
+                            + '</li>'
+                        ;
                     } else {
                         // TODO: deal with ck, el, itp
                         html += '<li class="list-group-item">'
                             + '<strong>' + attributes[key] + ':</strong> '
-                            + render.escaped(val)
+                            + '<span class="item-' + key + '">'
+                              + render.escaped(val)
+                              + '</span>'
                             + '</li>'
                         ;
                     }
@@ -1492,32 +1518,41 @@ function ApxDocument(initializer) {
             }
 
             for (key in attributes = {
-                'uri': 'CASE Item URI',
                 'le': 'List Enumeration in Source',
                 'cku': 'Concept Keywords URI',
                 'lang': 'Language',
                 'licenceUri': 'Licence URI',
                 'mod': 'Last Changed'
             }) {
-                if (!empty(item[key]) || key === "uri") {
+                if (!empty(item[key])) {
                     val = item[key];
 
                     // TODO: deal with cku, licenceUri
                     // for uri, get it from the ApxDocument
-                    if (key === "uri") {
-                        val = self.getItemUri(item);
-                        html += '<li class="list-group-item lsItemDetailsExtras">'
-                            + '<strong>' + attributes[key] + ':</strong> '
-                            + render.inlineLinked(val)
-                            + '</li>'
-                        ;
-                    } else {
-                        html += '<li class="list-group-item lsItemDetailsExtras">'
-                            + '<strong>' + attributes[key] + ':</strong> '
-                            + render.escaped(val)
-                            + '</li>'
-                        ;
-                    }
+ 
+                    val = render.escaped(val);
+
+                    html += $('<div>').append(
+                        $('<li>', {
+                            'class': 'list-group-item lsItemDetailsExtras'
+                        }).append(
+                            $('<strong>', {
+                                text: attributes[key] + ':'
+                            }),
+                            ' ',
+                            val
+                        )
+                    ).html();
+                }
+            }
+
+            if ('customFields' in item) {
+                for (key in item.customFields) {
+                    html += '<li class="list-group-item lsItemCustomFields lsItemDetailsExtras">'
+                        + '<strong>' + key + ':</strong> '
+                        + render.escaped(item.customFields[key])
+                        + '</li>'
+                    ;
                 }
             }
             $jq.find("ul").html(html);
